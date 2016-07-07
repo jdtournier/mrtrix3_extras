@@ -26,6 +26,8 @@ using namespace App;
 
 void usage ()
 {
+  AUTHOR = "J-Donald Tournier (jdtournier@gmail.com)";
+
   DESCRIPTION
     + "perform generic inequality-constrained least-squares on input images"
     + "i.e. solve for   MX = Y\n\n     such that   CX >= 0";
@@ -100,7 +102,7 @@ void run ()
   Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
   auto in = Image<value_type>::open (argument[0]);
-  if (in.size(3) != problem.num_measurements())
+  if (in.size(3) != ssize_t (problem.num_measurements()))
     throw Exception ("number of volumes in input image \"" + std::string (argument[0]) + "\" does not match number of columns in problem matrix \"" + std::string (argument[1]) + "\"");
 
   Header header (in);
