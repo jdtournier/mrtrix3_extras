@@ -36,10 +36,13 @@ void usage ()
   ARGUMENTS
     + Argument ("input", "the input images Y.").type_image_in ()
     + Argument ("problem", "the problem matrix M")
-    + Argument ("constraint", "the constraint matrix C")
     + Argument ("output", "the output solution image X.").type_image_out ();
 
   OPTIONS
+
+    + Option ("constraint", "specify the constraint matrix. By default, the algorithm will solve for a non-negative solution vector.")
+    +   Argument ("matrix").type_file_in()
+
     + Option ("niter", "specify the maximum number of iterations to perform (default: 10 x num_parameters)")
     +   Argument ("num").type_integer (0)
 
@@ -95,10 +98,16 @@ void run ()
   auto constraint_norm_reg = get_option_value ("constraint_norm", 0.0);
 
   auto problem_matrix    = load_matrix<compute_type> (argument[1]);
-  auto constraint_matrix = load_matrix<compute_type> (argument[2]);
+  decltype (problem_matrix) constraint_matrix;
 
-  if (problem_matrix.cols() != constraint_matrix.cols())
-    throw Exception ("number of columns in problem matrix \"" + std::string (argument[1]) + "\" does not match number of columns in constraint matrix \"" + std::string(argument[2]) + "\"");
+  auto opt = get_options ("constraint");
+  if (opt.size()) {
+    constraint_matrix = load_matrix<compute_type> (opt[0][0]);
+    if (problem_matrix.cols() != constraint_matrix.cols())
+      throw Exception ("number of columns in problem matrix \"" + std::string (argument[1]) + "\" does not match number of columns in constraint matrix \"" + std::string(opt[0][0]) + "\"");
+  }
+  else
+    constraint_matrix = decltype(constraint_matrix)::Identity (problem_matrix.cols(), problem_matrix.cols());
 
   Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
@@ -108,7 +117,7 @@ void run ()
 
   Header header (in);
   header.size (3) = problem.num_parameters();
-  auto out = Image<value_type>::create (argument[3], header);
+  auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
     .run (Processor (problem), in, out);
