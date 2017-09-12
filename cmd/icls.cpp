@@ -27,6 +27,7 @@ using namespace App;
 void usage ()
 {
   AUTHOR = "J-Donald Tournier (jdtournier@gmail.com)";
+  SYNOPSIS = "perform generic inequality-constrained least-squares on input images";
 
   DESCRIPTION
     + "perform generic inequality-constrained least-squares on input images"
