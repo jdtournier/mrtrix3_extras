@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2008-2016 the MRtrix3 contributors
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/
- * 
+ *
  * MRtrix is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * 
+ *
  * For more details, see www.mrtrix.org
- * 
+ *
  */
 
 
@@ -53,7 +53,10 @@ void usage ()
     +   Argument ("value").type_float (0.0)
 
     + Option ("constraint_norm", "specify the regularisation to apply on the constraint vector norm - useful for poorly condition problems (default: 0.0)")
-    +   Argument ("value").type_float (0.0);
+    +   Argument ("value").type_float (0.0)
+
+    + Option ("prediction", "output predicted image")
+    +   Argument ("image").type_image_out();
 }
 
 
@@ -64,26 +67,35 @@ typedef double compute_type;
 
 class Processor {
   public:
-    Processor (const Math::ICLS::Problem<compute_type>& problem) : 
-      solve (problem), 
-      x(problem.H.cols()), 
-      b(problem.H.rows()) { }
+    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction) :
+      solve (problem),
+      x(problem.H.cols()),
+      b(problem.H.rows()),
+      prediction (prediction) { }
 
-    void operator() (Image<value_type>& in, Image<value_type>& out) 
+    void operator() (Image<value_type>& in, Image<value_type>& out)
     {
       for (auto l = Loop (3) (in); l; ++l)
         b[in.index(3)] = in.value();
 
       auto niter = solve (x, b);
-      if (niter >= solve.problem().max_niter) 
+      if (niter >= solve.problem().max_niter)
         INFO ("voxel at [ " + str(in.index(0)) + " " + str(in.index(1)) + " " + str(in.index(2)) + " ] failed to converge");
 
       for (auto l = Loop (3) (out); l; ++l)
         out.value() = x[out.index(3)];
+
+      if (prediction.valid()) {
+        assign_pos_of (in, 0, 3).to (prediction);
+        b = solve.problem().H * x;
+        for (auto l = Loop (3) (prediction); l; ++l)
+          prediction.value() = b[prediction.index(3)];
+      }
     }
 
     Math::ICLS::Solver<compute_type> solve;
     Eigen::VectorXd x, b;
+    Image<value_type> prediction;
 };
 
 
@@ -115,11 +127,20 @@ void run ()
   if (in.size(3) != ssize_t (problem.num_measurements()))
     throw Exception ("number of volumes in input image \"" + std::string (argument[0]) + "\" does not match number of columns in problem matrix \"" + std::string (argument[1]) + "\"");
 
+  opt = get_options ("prediction");
+  Image<value_type> prediction;
+  if (opt.size()) {
+    Header header = in;
+    header.datatype() = DataType::Float32;
+    prediction = Image<value_type>::create (opt[0][0], header);
+  }
+
   Header header (in);
   header.size (3) = problem.num_parameters();
   auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
-    .run (Processor (problem), in, out);
+    .run (Processor (problem, prediction), in, out);
+
 }
 
