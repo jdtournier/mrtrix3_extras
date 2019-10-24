@@ -40,6 +40,9 @@ void usage ()
 
   OPTIONS
 
+    + Option ("mask", "only perform computation within the specified binary brain mask image.")
+    +   Argument ("image").type_image_in()
+
     + Option ("constraint", "specify the constraint matrix. By default, the algorithm will solve for a non-negative solution vector.")
     +   Argument ("matrix").type_file_in()
 
@@ -73,8 +76,11 @@ class Processor {
       b(problem.H.rows()),
       prediction (prediction) { }
 
-    void operator() (Image<value_type>& in, Image<value_type>& out)
+    void operator() (Image<value_type>& in, Image<value_type>& out, Image<bool>& mask)
     {
+      if (mask.valid() && !mask.value())
+        return;
+
       for (auto l = Loop (3) (in); l; ++l)
         b[in.index(3)] = in.value();
 
@@ -127,6 +133,13 @@ void run ()
   if (in.size(3) != ssize_t (problem.num_measurements()))
     throw Exception ("number of volumes in input image \"" + std::string (argument[0]) + "\" does not match number of columns in problem matrix \"" + std::string (argument[1]) + "\"");
 
+  Image<bool> mask;
+  opt = get_options ("mask");
+  if (opt.size()) {
+    mask = Image<bool>::open (opt[0][0]);
+    check_dimensions (mask, in, 0, 3);
+  }
+
   opt = get_options ("prediction");
   Image<value_type> prediction;
   if (opt.size()) {
@@ -140,7 +153,7 @@ void run ()
   auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
-    .run (Processor (problem, prediction), in, out);
+    .run (Processor (problem, prediction), in, out, mask);
 
 }
 

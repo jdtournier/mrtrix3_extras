@@ -9,7 +9,7 @@ void usage ()
 {
   AUTHOR = "Joe Bloggs (joe.bloggs@acme.org)";
   SYNOPSIS = "compute matrix multiplication of each voxel vector of "
-    "values with matrix of random numbers";
+    "values with matrix";
   ARGUMENTS
   + Argument ("in", "the input image.").type_image_in ()
   + Argument ("matrix", "the mixing matrix.").type_file_in ()
