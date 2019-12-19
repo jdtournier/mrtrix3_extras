@@ -76,13 +76,11 @@ typedef double compute_type;
 
 class Processor {
   public:
-    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction, const Eigen::VectorXd& threshold, size_t num_equalities) :
+    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction) :
       solve (problem),
       x(problem.H.cols()),
       b(problem.H.rows()),
-      t (threshold),
-      prediction (prediction),
-      num_equalities (num_equalities) { }
+      prediction (prediction) { }
 
     void operator() (Image<value_type>& in, Image<value_type>& out, Image<bool>& mask)
     {
@@ -92,7 +90,7 @@ class Processor {
       for (auto l = Loop (3) (in); l; ++l)
         b[in.index(3)] = in.value();
 
-      auto niter = solve (x, b, t, num_equalities);
+      auto niter = solve (x, b);
       if (niter >= solve.problem().max_niter)
         INFO ("voxel at [ " + str(in.index(0)) + " " + str(in.index(1)) + " " + str(in.index(2)) + " ] failed to converge");
 
@@ -108,9 +106,8 @@ class Processor {
     }
 
     Math::ICLS::Solver<compute_type> solve;
-    Eigen::VectorXd x, b, t;
+    Eigen::VectorXd x, b;
     Image<value_type> prediction;
-    const size_t num_equalities;
 };
 
 
@@ -137,15 +134,16 @@ void run ()
   else
     constraint_matrix = decltype(constraint_matrix)::Identity (problem_matrix.cols(), problem_matrix.cols());
 
-  Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
   Eigen::Matrix<compute_type, Eigen::Dynamic, 1> threshold;
   opt = get_options ("threshold");
   if (opt.size()) {
     threshold = load_vector<compute_type> (opt[0][0]);
-    if (threshold.size() != problem.num_constraints())
+    if (threshold.size() != constraint_matrix.rows())
       throw Exception ("size of threshold vector does not match number of n constraint matrix");
   }
+
+  Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, threshold, num_equalities, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
   auto in = Image<value_type>::open (argument[0]);
   if (in.size(3) != ssize_t (problem.num_measurements()))
@@ -171,6 +169,6 @@ void run ()
   auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
-    .run (Processor (problem, prediction, threshold, num_equalities), in, out, mask);
+    .run (Processor (problem, prediction), in, out, mask);
 }
 

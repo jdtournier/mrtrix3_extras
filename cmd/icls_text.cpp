@@ -91,20 +91,20 @@ void run ()
   else
     constraint_matrix = decltype(constraint_matrix)::Identity (problem_matrix.cols(), problem_matrix.cols());
 
-  Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
-
   opt = get_options ("threshold");
   if (opt.size()) {
     constraint_vector = load_vector<compute_type> (opt[0][0]);
-    if (constraint_vector.size() != problem.num_constraints())
+    if (constraint_vector.size() != constraint_matrix.rows())
       throw Exception ("size of threshold vector does not match number of n constraint matrix");
   }
+
+  Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, constraint_vector, num_equalities, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
   Eigen::VectorXd x (problem_matrix.cols());
 
   Timer timer;
   Math::ICLS::Solver<compute_type> solve (problem);
-  auto niter = solve (x, problem_vector, constraint_vector, num_equalities);
+  auto niter = solve (x, problem_vector);
   auto elapsed = timer.elapsed();
 
   if (niter >= solve.problem().max_niter) {
