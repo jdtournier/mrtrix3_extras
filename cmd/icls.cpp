@@ -49,6 +49,9 @@ void usage ()
     + Option ("threshold", "specify t, the constraint thresholds. By default, the algorithm will set this zero.")
     +   Argument ("matrix").type_file_in()
 
+    + Option ("num_equalities", "specify the number of constraints at the end of the contraint matrix/vector that should be treated as equalities (default: 0).")
+    +   Argument ("num").type_integer(0)
+
     + Option ("niter", "specify the maximum number of iterations to perform (default: 10 x num_parameters)")
     +   Argument ("num").type_integer (0)
 
@@ -73,12 +76,13 @@ typedef double compute_type;
 
 class Processor {
   public:
-    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction, const Eigen::VectorXd& threshold) :
+    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction, const Eigen::VectorXd& threshold, size_t num_equalities) :
       solve (problem),
       x(problem.H.cols()),
       b(problem.H.rows()),
       t (threshold),
-      prediction (prediction) { }
+      prediction (prediction),
+      num_equalities (num_equalities) { }
 
     void operator() (Image<value_type>& in, Image<value_type>& out, Image<bool>& mask)
     {
@@ -88,7 +92,7 @@ class Processor {
       for (auto l = Loop (3) (in); l; ++l)
         b[in.index(3)] = in.value();
 
-      auto niter = solve (x, b, t);
+      auto niter = solve (x, b, t, num_equalities);
       if (niter >= solve.problem().max_niter)
         INFO ("voxel at [ " + str(in.index(0)) + " " + str(in.index(1)) + " " + str(in.index(2)) + " ] failed to converge");
 
@@ -106,6 +110,7 @@ class Processor {
     Math::ICLS::Solver<compute_type> solve;
     Eigen::VectorXd x, b, t;
     Image<value_type> prediction;
+    const size_t num_equalities;
 };
 
 
@@ -118,6 +123,7 @@ void run ()
   auto tolerance           = get_option_value ("tolerance",       0.0);
   auto solution_norm_reg   = get_option_value ("solution_norm",   0.0);
   auto constraint_norm_reg = get_option_value ("constraint_norm", 0.0);
+  auto num_equalities      = get_option_value ("num_equalities",    0);
 
   auto problem_matrix    = load_matrix<compute_type> (argument[1]);
   decltype (problem_matrix) constraint_matrix;
@@ -165,7 +171,6 @@ void run ()
   auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
-    .run (Processor (problem, prediction, threshold), in, out, mask);
-
+    .run (Processor (problem, prediction, threshold, num_equalities), in, out, mask);
 }
 
