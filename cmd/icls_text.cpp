@@ -30,22 +30,28 @@ void usage ()
 
   DESCRIPTION
     + "perform generic inequality-constrained least-squares on input images"
-    + "i.e. solve for   MX = Y\n\n     such that   CX >= t";
+    + "i.e. solve for   Hx = y\n\n     such that   Ax >= t and Bx = s";
 
   ARGUMENTS
-    + Argument ("problem", "the problem matrix M").type_file_in()
-    + Argument ("input", "the input vector Y.").type_file_in()
-    + Argument ("output", "the output solution vector X.").type_file_out ();
+    + Argument ("problem", "the problem matrix H").type_file_in()
+    + Argument ("input", "the input vector y.").type_file_in()
+    + Argument ("output", "the output solution vector x.").type_file_out ();
 
   OPTIONS
 
-    + Option ("constraint", "specify C, the constraint matrix. By default, the algorithm will solve for a non-negative solution vector, and set this matrix to the identity.")
+    + Option ("constraint", "specify A, the inequality constraint matrix. By default, the algorithm will solve for a non-negative solution vector, and set this matrix to the identity.")
     +   Argument ("matrix").type_file_in()
 
-    + Option ("threshold", "specify t, the constraint thresholds. By default, the algorithm will set this zero.")
+    + Option ("values", "specify t, the inequality constraint vector. By default, the algorithm will set this zero.")
     +   Argument ("matrix").type_file_in()
 
-    + Option ("num_equalities", "specify the number of constraints at the end of the contraint matrix/vector that should be treated as equalities (default: 0).")
+    + Option ("equality_constraint", "specify B, the (optional) equality constraint matrix.")
+    +   Argument ("matrix").type_file_in()
+
+    + Option ("equality_values", "specify s, the (optional) equality constraint vector.")
+    +   Argument ("matrix").type_file_in()
+
+    + Option ("num_equalities", "as an alternative to supplying separate A & B, and t & s, you can specify that the last num constraints of the contraint matrix/vector should be treated as equalities (default: 0).")
     +   Argument ("num").type_integer(0)
 
     + Option ("niter", "specify the maximum number of iterations to perform (default: 10 x num_parameters)")
@@ -81,24 +87,33 @@ void run ()
   auto problem_vector    = load_vector<compute_type> (argument[1]);
   decltype (problem_matrix) constraint_matrix;
   decltype (problem_vector) constraint_vector;
+  decltype (problem_matrix) eq_constraint_matrix;
+  decltype (problem_vector) eq_constraint_vector;
 
   auto opt = get_options ("constraint");
-  if (opt.size()) {
+  if (opt.size())
     constraint_matrix = load_matrix<compute_type> (opt[0][0]);
-    if (problem_matrix.cols() != constraint_matrix.cols())
-      throw Exception ("number of columns in problem matrix \"" + std::string (argument[1]) + "\" does not match number of columns in constraint matrix \"" + std::string(opt[0][0]) + "\"");
-  }
   else
     constraint_matrix = decltype(constraint_matrix)::Identity (problem_matrix.cols(), problem_matrix.cols());
 
-  opt = get_options ("threshold");
-  if (opt.size()) {
+  opt = get_options ("values");
+  if (opt.size())
     constraint_vector = load_vector<compute_type> (opt[0][0]);
-    if (constraint_vector.size() != constraint_matrix.rows())
-      throw Exception ("size of threshold vector does not match number of n constraint matrix");
-  }
 
-  Math::ICLS::Problem<compute_type> problem (problem_matrix, constraint_matrix, constraint_vector, num_equalities, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
+  opt = get_options ("equality_constraint");
+  if (opt.size())
+    eq_constraint_matrix = load_matrix<compute_type> (opt[0][0]);
+
+  opt = get_options ("equality_values");
+  if (opt.size())
+    eq_constraint_vector = load_vector<compute_type> (opt[0][0]);
+
+
+  Math::ICLS::Problem<compute_type> problem;
+  if (num_equalities)
+    problem = Math::ICLS::Problem<compute_type> (problem_matrix, constraint_matrix, constraint_vector, num_equalities, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
+  else
+    problem = Math::ICLS::Problem<compute_type> (problem_matrix, constraint_matrix, eq_constraint_matrix, constraint_vector, eq_constraint_vector, solution_norm_reg, constraint_norm_reg, max_iterations, tolerance);
 
   Eigen::VectorXd x (problem_matrix.cols());
 
