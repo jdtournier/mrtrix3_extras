@@ -76,16 +76,20 @@ typedef double compute_type;
 
 class Processor {
   public:
-    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction) :
+    Processor (const Math::ICLS::Problem<compute_type>& problem, Image<value_type>& prediction, Image<bool>& mask) :
       solve (problem),
       x(problem.H.cols()),
       b(problem.H.rows()),
-      prediction (prediction) { }
+      prediction (prediction),
+      mask (mask) { }
 
-    void operator() (Image<value_type>& in, Image<value_type>& out, Image<bool>& mask)
+    void operator() (Image<value_type>& in, Image<value_type>& out)
     {
-      if (mask.valid() && !mask.value())
-        return;
+      if (mask.valid()) {
+       assign_pos_of (in, 0, 3).to (mask);
+       if (!mask.value())
+         return;
+      }
 
       for (auto l = Loop (3) (in); l; ++l)
         b[in.index(3)] = in.value();
@@ -108,6 +112,7 @@ class Processor {
     Math::ICLS::Solver<compute_type> solve;
     Eigen::VectorXd x, b;
     Image<value_type> prediction;
+    Image<bool> mask;
 };
 
 
@@ -169,6 +174,6 @@ void run ()
   auto out = Image<value_type>::create (argument[2], header);
 
   ThreadedLoop ("performing constrained least-squares fit", in, 0, 3)
-    .run (Processor (problem, prediction), in, out, mask);
+    .run (Processor (problem, prediction, mask), in, out);
 }
 
