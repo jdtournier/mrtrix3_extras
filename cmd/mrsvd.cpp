@@ -92,7 +92,7 @@ void run ()
     }
 
     for (auto l2 = Loop(3)(in); l2; ++l2)
-      data(n,in.index(3)) = in.value();
+      data(n,ssize_t(in.index(3))) = in.value();
     ++n;
   }
 
@@ -113,7 +113,7 @@ void run ()
     }
 
     for (auto l2 = Loop(3)(out); l2; ++l2)
-      out.value() = svd.matrixU()(n, out.index(3));
+      out.value() = svd.matrixU()(n,ssize_t(out.index(3)));
     ++n;
   }
 }
