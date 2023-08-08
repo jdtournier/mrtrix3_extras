@@ -21,11 +21,13 @@
 #include "dwi/gradient.h"
 #include "dwi/shells.h"
 #include "algo/threaded_loop.h"
+#include "file/matrix.h"
 
 #include <Eigen/SVD>
 
 using namespace MR;
 using namespace App;
+using namespace File::Matrix;
 
 void usage ()
 {

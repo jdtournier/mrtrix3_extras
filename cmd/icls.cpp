@@ -17,12 +17,14 @@
 #include "command.h"
 #include "progressbar.h"
 #include "image.h"
+#include "file/matrix.h"
 #include "algo/threaded_loop.h"
 #include "math/constrained_least_squares.h"
 
 
 using namespace MR;
 using namespace App;
+using namespace File::Matrix;
 
 void usage ()
 {

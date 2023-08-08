@@ -18,10 +18,12 @@
 #include "progressbar.h"
 #include "timer.h"
 #include "math/constrained_least_squares.h"
+#include "file/matrix.h"
 
 
 using namespace MR;
 using namespace App;
+using namespace File::Matrix;
 
 void usage ()
 {

@@ -1,9 +1,11 @@
 #include "command.h"
 #include "image.h"
 #include "algo/threaded_loop.h"
+#include "file/matrix.h"
 
 using namespace MR;
 using namespace App;
+using namespace File::Matrix;
 
 void usage ()
 {
