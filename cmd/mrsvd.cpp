@@ -15,7 +15,7 @@
 
 #include "command.h"
 #include "image.h"
-#include "phase_encoding.h"
+#include "metadata/phase_encoding.h"
 #include "progressbar.h"
 #include "math/SH.h"
 #include "dwi/gradient.h"
